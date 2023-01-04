@@ -8,18 +8,16 @@ from aws_cdk import (
 )
 from constructs import Construct
 
-class AwsStack(Stack):
-    def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
+class APIStack(Stack):
+    def __init__(self, scope: Construct, construct_id: str, vpc: ec2.Vpc, cluster: ecs.Cluster, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
-        vpc = ec2.Vpc(self, "vpc", max_azs=2)
-        cluster = ecs.Cluster(self, "fargate-cluster", vpc=vpc)
 
         src_path = Path(__file__).parents[2].joinpath("api")
         if not src_path.exists():
             print(f"Path {src_path} does not exist")
 
-        service = ecs_patterns.ApplicationLoadBalancedFargateService(
+        self.service = ecs_patterns.ApplicationLoadBalancedFargateService(
             self, "service",
             cluster=cluster,
             task_image_options=ecs_patterns.ApplicationLoadBalancedTaskImageOptions(
@@ -30,6 +28,6 @@ class AwsStack(Stack):
             task_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE_WITH_NAT)
         )
 
-        service.target_group.configure_health_check(path="/hello/health")
+        self.service.target_group.configure_health_check(path="/hello/health")
 
-        CfnOutput(self, "hello-endpoint", value=f"http://{service.load_balancer.load_balancer_dns_name}/hello/Coder")
+        CfnOutput(self, "hello-endpoint", value=f"http://{self.service.load_balancer.load_balancer_dns_name}/hello/Coder")
